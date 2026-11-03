@@ -1,95 +1,414 @@
-import express from 'express'
-import { MongoClient, ObjectId } from 'mongodb';
+
+import express from "express"
+import { MongoClient, ObjectId } from "mongodb"
 import cors from "cors"
-import 'dotenv/config'
+import "dotenv/config"
+
 const app = express()
 
-app.use(express.json());
-app.use(cors());
+app.use(express.json())
+app.use(cors())
+
 const port = process.env.PORT || 5000
 
-// connect to mongodb
-const client = new MongoClient(`mongodb+srv://${process.env.MONGODB_USESRNAME}:${process.env.MONGODB_PASSWOED}@cluster0.4dwew1j.mongodb.net/`);
+// MongoDB Connection
+const client = new MongoClient(
+    `mongodb+srv://${process.env.MONGODB_USESRNAME}:${process.env.MONGODB_PASSWOED}@cluster0.4dwew1j.mongodb.net/`
+)
 
-export async function connectToMongoDB() {
-  try {
-    await client.connect();
-    console.log("You successfully connected to MongoDB!");
-    return client;
-  } catch (err) {
-    console.dir(err);
-  }
+async function connectToMongoDB() {
+    try {
+        await client.connect()
+        console.log("You successfully connected to MongoDB!")
+    } catch (error) {
+        console.error("MongoDB Connection Error:", error)
+        throw error
+    }
 }
 
-const MongodbConnection = await connectToMongoDB(); 
-const db = MongodbConnection.db('studio-space')
+// Database & Collections
+await connectToMongoDB()
+
+const db = client.db("studio-space")
+
 const studioCollection = db.collection("studios")
+const booking = db.collection("booking")
 
-
-
-
-app.get("/", (req, res)=>{
+// Home Route
+app.get("/", (req, res) => {
     res.send("Welcome to my Server")
 })
 
-app.post("/add-studio", async (req, res)=>{
-  const data = req.body
-  const result = await studioCollection.insertOne(data)
-  res.send(result)
-  console.log("Limon")
+// ========================================
+// ADD STUDIO
+// ========================================
+app.post("/add-studio", async (req, res) => {
+    try {
+        const data = req.body
 
-})
-app.get("/add-studio", async (req, res)=> {
-  
-  
+        const result = await studioCollection.insertOne(data)
 
-   try {
-    const result = await studioCollection.find().toArray();
+        res.status(201).json({
+            message: "Studio added successfully",
+            result,
+        })
+    } catch (error) {
+        console.error("Add Studio Error:", error)
 
-    res.status(200).send(result);
-  } catch (error) {
-    res.status(500).send({
-      message: "Failed to fetch studios",
-    });
-  }
-
-})
-app.get("/add-studio/:id" , async (req, res)=>{
-  const id = req.params
-  const result = await studioCollection.findOne({_id: new ObjectId(id)})
-  res.send(result)
-
+        res.status(500).json({
+            message: "Failed to add studio",
+        })
+    }
 })
 
-// My listening
+// ========================================
+// GET ALL STUDIOS
+// ========================================
+app.get("/add-studio", async (req, res) => {
+    try {
+        const result = await studioCollection.find().toArray()
+
+        res.status(200).json(result)
+    } catch (error) {
+        console.error("Fetch Studios Error:", error)
+
+        res.status(500).json({
+            message: "Failed to fetch studios",
+        })
+    }
+})
+
+// ========================================
+// GET SINGLE STUDIO
+// ========================================
+app.get("/add-studio/:id", async (req, res) => {
+    try {
+        const { id } = req.params
+
+        if (!ObjectId.isValid(id)) {
+            return res.status(400).json({
+                message: "Invalid studio ID",
+            })
+        }
+
+        const result = await studioCollection.findOne({
+            _id: new ObjectId(id),
+        })
+
+        if (!result) {
+            return res.status(404).json({
+                message: "Studio not found",
+            })
+        }
+
+        res.status(200).json(result)
+    } catch (error) {
+        console.error("Single Studio Error:", error)
+
+        res.status(500).json({
+            message: "Failed to fetch studio",
+        })
+    }
+})
+
+// ========================================
+// MY LISTINGS - OWNER EMAIL
+// ========================================
 app.get("/my-listings/:email", async (req, res) => {
-  const email = req.params.email;
+    try {
+        const { email } = req.params
 
-  const result = await studioCollection
-    .find({ "owner.email": email })
-    .toArray();
+        const result = await studioCollection
+            .find({ "owner.email": email })
+            .toArray()
 
-  res.send(result);
-});
+        res.status(200).json(result)
+    } catch (error) {
+        console.error("My Listings Error:", error)
+
+        res.status(500).json({
+            message: "Failed to fetch listings",
+        })
+    }
+})
+
+// ========================================
+// CREATE BOOKING
+// New booking always Pending
+// ========================================
+app.post("/booking", async (req, res) => {
+    try {
+        const data = {
+            ...req.body,
+            status: "Pending",
+            createdAt: new Date().toISOString(),
+            updatedAt: new Date().toISOString(),
+        }
+
+        const result = await booking.insertOne(data)
+
+        res.status(201).json({
+            message: "Booking created successfully",
+            result,
+        })
+
+        console.log("New Booking Created")
+    } catch (error) {
+        console.error("Create Booking Error:", error)
+
+        res.status(500).json({
+            message: "Failed to create booking",
+        })
+    }
+})
+
+// ========================================
+// GET ALL BOOKINGS
+// ========================================
+app.get("/booking", async (req, res) => {
+    try {
+        const result = await booking.find().toArray()
+
+        res.status(200).json(result)
+    } catch (error) {
+        console.error("Fetch Bookings Error:", error)
+
+        res.status(500).json({
+            message: "Failed to fetch bookings",
+        })
+    }
+})
+
+// ========================================
+// CUSTOMER BOOKINGS - CUSTOMER EMAIL
+// ========================================
+app.get("/booking/:email", async (req, res) => {
+    try {
+        const { email } = req.params
+
+        const result = await booking
+            .find({ customerEmail: email })
+            .toArray()
+
+        res.status(200).json(result)
+    } catch (error) {
+        console.error("Customer Bookings Error:", error)
+
+        res.status(500).json({
+            message: "Failed to fetch customer bookings",
+        })
+    }
+})
+
+// ========================================
+// OWNER BOOKINGS - OWNER EMAIL
+// ========================================
+app.get("/bookingowner/:email", async (req, res) => {
+    try {
+        const { email } = req.params
+
+        const result = await booking
+            .find({ ownerEmail: email })
+            .toArray()
+
+        res.status(200).json(result)
+    } catch (error) {
+        console.error("Owner Bookings Error:", error)
+
+        res.status(500).json({
+            message: "Failed to fetch owner bookings",
+        })
+    }
+})
+
+// ========================================
+// UPDATE STUDIO
+// ========================================
 app.patch("/update-studio/:id", async (req, res) => {
-  const {id} = req.params;
-  const updateData= req.body;
-  const result = await studioCollection.updateOne(
-    {_id: new ObjectId(id)},
-    {$set:updateData}
-  )
-  res.json(result)
+    try {
+        const { id } = req.params
+        const updateData = req.body
 
+        if (!ObjectId.isValid(id)) {
+            return res.status(400).json({
+                message: "Invalid studio ID",
+            })
+        }
 
+        const result = await studioCollection.updateOne(
+            { _id: new ObjectId(id) },
+            { $set: updateData }
+        )
+
+        if (!result.matchedCount) {
+            return res.status(404).json({
+                message: "Studio not found",
+            })
+        }
+
+        res.status(200).json({
+            message: "Studio updated successfully",
+            result,
+        })
+    } catch (error) {
+        console.error("Update Studio Error:", error)
+
+        res.status(500).json({
+            message: "Failed to update studio",
+        })
+    }
 })
+
+// ========================================
+// UPDATE BOOKING STATUS - OWNER
+// ========================================
+app.patch("/UpdateBooking/:email", async (req, res) => {
+    try {
+        const { email } = req.params
+        const { bookingId, status } = req.body
+
+        // Validate Booking ID
+        if (!ObjectId.isValid(bookingId)) {
+            return res.status(400).json({
+                message: "Invalid booking ID",
+            })
+        }
+
+        // Allowed Status Transitions
+        const allowedTransitions = {
+            Pending: ["Confirmed", "Cancelled"],
+            Confirmed: ["Completed", "Cancelled"],
+            Completed: [],
+            Cancelled: [],
+        }
+
+        // Find Booking Belonging to This Owner
+        const existingBooking = await booking.findOne({
+            _id: new ObjectId(bookingId),
+            ownerEmail: email,
+        })
+
+        if (!existingBooking) {
+            return res.status(404).json({
+                message: "Booking not found",
+            })
+        }
+
+        const currentStatus = existingBooking.status || "Pending"
+
+        // Validate Status Transition
+        if (!allowedTransitions[currentStatus]?.includes(status)) {
+            return res.status(400).json({
+                message: `Cannot change ${currentStatus} to ${status}`,
+            })
+        }
+
+        // Update Booking
+        const result = await booking.updateOne(
+            {
+                _id: new ObjectId(bookingId),
+                ownerEmail: email,
+            },
+            {
+                $set: {
+                    status,
+                    updatedAt: new Date().toISOString(),
+                },
+            }
+        )
+
+        res.status(200).json({
+            message: "Booking status updated successfully",
+            result,
+        })
+
+        console.log(
+            `Booking ${bookingId} updated: ${currentStatus} -> ${status}`
+        )
+    } catch (error) {
+        console.error("Booking Update Error:", error)
+
+        res.status(500).json({
+            message: "Failed to update booking",
+        })
+    }
+})
+
+// ========================================
+// DELETE STUDIO
+// ========================================
 app.delete("/delete-studio/:id", async (req, res) => {
-  const {id} = req.params;
-  const result = await studioCollection.deleteOne({_id: new ObjectId(id)})
-  res.json(result)
+    try {
+        const { id } = req.params
+
+        if (!ObjectId.isValid(id)) {
+            return res.status(400).json({
+                message: "Invalid studio ID",
+            })
+        }
+
+        const result = await studioCollection.deleteOne({
+            _id: new ObjectId(id),
+        })
+
+        if (!result.deletedCount) {
+            return res.status(404).json({
+                message: "Studio not found",
+            })
+        }
+
+        res.status(200).json({
+            message: "Studio deleted successfully",
+            result,
+        })
+    } catch (error) {
+        console.error("Delete Studio Error:", error)
+
+        res.status(500).json({
+            message: "Failed to delete studio",
+        })
+    }
 })
 
+// ========================================
+// DELETE BOOKING
+// ========================================
+app.delete("/bookingdelet/:id", async (req, res) => {
+    try {
+        const { id } = req.params
 
+        if (!ObjectId.isValid(id)) {
+            return res.status(400).json({
+                message: "Invalid booking ID",
+            })
+        }
 
-app.listen(port,()=>{
+        const result = await booking.deleteOne({
+            _id: new ObjectId(id),
+        })
+
+        if (!result.deletedCount) {
+            return res.status(404).json({
+                message: "Booking not found",
+            })
+        }
+
+        res.status(200).json({
+            message: "Booking deleted successfully",
+            result,
+        })
+    } catch (error) {
+        console.error("Delete Booking Error:", error)
+
+        res.status(500).json({
+            message: "Failed to delete booking",
+        })
+    }
+})
+
+// ========================================
+// START SERVER
+// ========================================
+app.listen(port, () => {
     console.log(`Example app listening on port ${port}`)
 })
