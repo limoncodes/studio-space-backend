@@ -9,6 +9,7 @@ const app = express()
 app.use(express.json())
 app.use(cors())
 
+
 const port = process.env.PORT || 5000
 
 // MongoDB Connection
@@ -38,6 +39,8 @@ const booking = db.collection("booking")
 app.get("/", (req, res) => {
     res.send("Welcome to my Server")
 })
+
+
 
 // ========================================
 // ADD STUDIO
@@ -81,7 +84,8 @@ app.get("/add-studio", async (req, res) => {
 // ========================================
 // GET SINGLE STUDIO
 // ========================================
-app.get("/add-studio/:id", async (req, res) => {
+app.get("/add-studio/:id",()=> async (req, res) => {
+    
     try {
         const { id } = req.params
 
@@ -404,6 +408,10 @@ app.delete("/bookingdelet/:id", async (req, res) => {
             message: "Failed to delete booking",
         })
     }
+})
+app.get("/studiolimit", async (req,res)=>{
+    const result = await studioCollection.find().limit(6).toArray()
+    res.send(result)
 })
 
 // ========================================
