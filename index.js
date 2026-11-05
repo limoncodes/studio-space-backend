@@ -43,7 +43,7 @@ app.get("/", (req, res) => {
 
 // Better Auth JWKS
 const JWKS = createRemoteJWKSet(
-    new URL("http://localhost:3000/api/auth/jwks")
+    new URL(`${process.env.BETTER_AUTH_URL}/api/auth/jwks`)
 );
 
 // Verify Better Auth Token
