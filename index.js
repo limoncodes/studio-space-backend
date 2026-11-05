@@ -224,7 +224,7 @@ app.get("/booking", async (req, res) => {
 // ========================================
 // CUSTOMER BOOKINGS - CUSTOMER EMAIL
 // ========================================
-app.get("/booking/:email", async (req, res) => {
+app.get("/booking/:email",verifyToken, async (req, res) => {
     try {
         const { email } = req.params
 
@@ -245,7 +245,7 @@ app.get("/booking/:email", async (req, res) => {
 // ========================================
 // OWNER BOOKINGS - OWNER EMAIL
 // ========================================
-app.get("/bookingowner/:email", async (req, res) => {
+app.get("/bookingowner/:email",verifyToken, async (req, res) => {
     try {
         const { email } = req.params
 
@@ -266,7 +266,7 @@ app.get("/bookingowner/:email", async (req, res) => {
 // ========================================
 // UPDATE STUDIO
 // ========================================
-app.patch("/update-studio/:id", async (req, res) => {
+app.patch("/update-studio/:id", verifyToken,async (req, res) => {
     try {
         const { id } = req.params
         const updateData = req.body
@@ -379,7 +379,7 @@ app.patch("/UpdateBooking/:email", async (req, res) => {
 // ========================================
 // DELETE STUDIO
 // ========================================
-app.delete("/delete-studio/:id", async (req, res) => {
+app.delete("/delete-studio/:id",verifyToken, async (req, res) => {
     try {
         const { id } = req.params
 
