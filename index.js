@@ -3,6 +3,7 @@ import express from "express"
 import { MongoClient, ObjectId } from "mongodb"
 import cors from "cors"
 import "dotenv/config"
+import { createRemoteJWKSet, jwtVerify } from "jose"
 
 const app = express()
 
@@ -40,12 +41,49 @@ app.get("/", (req, res) => {
     res.send("Welcome to my Server")
 })
 
+// Better Auth JWKS
+const JWKS = createRemoteJWKSet(
+    new URL("http://localhost:3000/api/auth/jwks")
+);
+
+// Verify Better Auth Token
+const verifyToken = async (req, res, next) => {
+    const authHeader = req.headers.authorization;
+
+    if (!authHeader?.startsWith("Bearer ")) {
+        return res.status(401).json({
+            message: "Unauthorized. Token required.",
+        });
+    }
+
+    const token = authHeader.slice(7).trim();
+
+    if (!token) {
+        return res.status(401).json({
+            message: "Token is missing.",
+        });
+    }
+
+    try {
+        await jwtVerify(token, JWKS);
+
+        // IMPORTANT: next() only once
+        return next();
+
+    } catch (error) {
+        console.error("Token Verification Error:", error);
+
+        return res.status(401).json({
+            message: "Invalid or expired token.",
+        });
+    }
+};
 
 
 // ========================================
 // ADD STUDIO
 // ========================================
-app.post("/add-studio", async (req, res) => {
+app.post("/add-studio",verifyToken, async (req, res) => {
     try {
         const data = req.body
 
@@ -84,8 +122,8 @@ app.get("/add-studio", async (req, res) => {
 // ========================================
 // GET SINGLE STUDIO
 // ========================================
-app.get("/add-studio/:id",()=> async (req, res) => {
-    
+app.get("/add-studio/:id",  async (req, res) => {
+
     try {
         const { id } = req.params
 
@@ -118,7 +156,7 @@ app.get("/add-studio/:id",()=> async (req, res) => {
 // ========================================
 // MY LISTINGS - OWNER EMAIL
 // ========================================
-app.get("/my-listings/:email", async (req, res) => {
+app.get("/my-listings/:email",verifyToken, async (req, res) => {
     try {
         const { email } = req.params
 
@@ -409,7 +447,7 @@ app.delete("/bookingdelet/:id", async (req, res) => {
         })
     }
 })
-app.get("/studiolimit", async (req,res)=>{
+app.get("/studiolimit", async (req, res) => {
     const result = await studioCollection.find().limit(6).toArray()
     res.send(result)
 })
